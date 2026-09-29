@@ -1,0 +1,21 @@
+{
+    "IsEncrypted": false,
+    "Values": {
+        "AzureWebJobsStorage": "",
+        "FUNCTIONS_WORKER_RUNTIME": "python",
+        "COSMOS_ENDPOINT": "",
+        "COSMOS_KEY": "",
+        "COSMOS_DATABASE": "",
+        "AZURE_OPENAI_ENDPOINT": "",
+        "AZURE_OPENAI_API_KEY": "",
+        "AZURE_OPENAI_API_VERSION": "",
+        "AZURE_OPENAI_DEPLOYMENT_CHAT": "",
+        "AZURE_OPENAI_DEPLOYMENT_EMBEDDING": "",
+        "AZURE_OPENAI_DEPLOYMENT_VISION": "",
+        "AZURE_STORAGE_CONNECTION_STRING": "",
+        "BLOB_CONTAINER_DIAGRAMS": "",
+        "WHATSAPP_APP_SECRET": "",
+        "WHATSAPP_ACCESS_TOKEN": "",
+        "WHATSAPP_PHONE_NUMBER_ID": ""
+    }
+}
