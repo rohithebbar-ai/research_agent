@@ -1,7 +1,7 @@
 [project]
 name = "research-agent"
 version = "0.1.0"
-description = "Research & Career Agent Ecosystem — Phase 1 MVP (Scout + Summarizer)"
+description = "Blog content pipeline: Scout, Researcher and Writer agents over a shared Cosmos DB backlog, with a local review app"
 requires-python = ">=3.11"
 dependencies = [
     "azure-functions>=1.20",
@@ -13,12 +13,24 @@ dependencies = [
     "pymupdf>=1.24",
     "requests>=2.32",
     "python-dotenv>=1.0",
+    "fastapi>=0.142.2",
+    "uvicorn>=0.54.0",
 ]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pytest>=8.0",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
+# Excluded: placeholder tests for unimplemented scaffolding (channels, paper scout, summarizer)
+# and a live-Cosmos check script that needs real credentials.
+addopts = [
+    "--ignore=tests/channels",
+    "--ignore=tests/agents/test_paper_scout.py",
+    "--ignore=tests/agents/test_summarizer.py",
+    "--ignore=tests/tools/test_cosmos_client.py",
+]

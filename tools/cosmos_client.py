@@ -1,11 +1,9 @@
-"""Cosmos DB (NoSQL, native vector search) — single store for all data.
+"""Cosmos DB (NoSQL) — single store for all data.
 
-Containers: documents, chunks (vector search on content_vector, 512-dim),
-concepts, conversations, authorized_users.
+Containers: documents, concepts, conversations, authorized_users, post_ideas,
+trend_holding (the last two back the blog-pipeline Scout; see tools/backlog_store.py).
 
 Reads:
-- vector_search(query_vector, concept_ids=None, top_k=5) -> list[dict]:
-    Native Cosmos DB vector search over the chunks container.
 - get_document_metadata(doc_id) -> dict
 - get_image(image_url) -> bytes  (Blob Storage)
 - get_conversation(session_id) -> dict
@@ -13,7 +11,6 @@ Reads:
 
 Writes:
 - write_document(record) -> None
-- write_chunks(chunks) -> None
 - upsert_conversation(session_id, messages) -> None
 """
 
@@ -26,10 +23,18 @@ from config import settings
 # requires both the document id AND its partition key value
 CONTAINER_PARTITION_KEYS: dict[str, str] = {
     "documents": "id",
-    "chunks": "parent_id",
     "concepts": "id",
     "conversations": "session_id",
     "authorized_users": "id",
+    "post_ideas": "id",
+    "trend_holding": "id",
+    "scout_profile": "id",
+    "research_notes": "idea_id",
+    "your_notes": "idea_id",
+    "drafts": "idea_id",
+    "agent_runs": "agent",
+    "topic_suggestions": "id",
+    "idea_sources": "idea_id",
 }
 
 _client : CosmosClient | None = None
@@ -78,55 +83,6 @@ def get_document(
     except CosmosResourceNotFoundError:
         return None
 
-def vector_search(
-        query_vector: list[float],
-        concept_ids: list[str] | None = None,
-        top_k: int = 5
-    ) -> list[dict]:
-    """
-    Search the `chunks` container by embedding similarity.
-
-    `query_vector` must already be embedded (512-dim, per our schema) —
-    embedding the raw query text happens one layer up, in whichever
-    agent calls this, not here.
-
-    Cross-partition is required: `chunks` is partitioned by `parent_id`
-    (one partition per paper/article), but a topic search needs to look
-    across every paper, not just one. 
-    """
-    container = _get_container("chunks")
-    query = (
-        "SELECT TOP @top_k "
-        "c.id, c.parent_id, c.content, c.content_type, c.image_url, "
-        "VectorDistance(c.content_vector, @query_vector) AS similarity "
-        "FROM c "
-    )
-    parameters = [
-        {"name": "@top_k", "value": top_k},
-        {"name": "@query_vector", "value": query_vector},
-    ]
-
-    if concept_ids:
-        # "any of c.concept_ids appears in the requested list" —
-        # array-intersection isn't a single built-in function in Cosmos
-        # SQL, so this is the standard pattern: iterate the chunk's own
-        # concept_ids array and check membership against the parameter list.
-        query += (
-            "WHERE EXISTS(SELECT VALUE t FROM t IN c.concept_ids "
-            "WHERE ARRAY_CONTAINS(@concept_ids, t)) "
-        )
-        parameters.append({"name": "@concept_ids", "value": concept_ids})
-
-    query += "ORDER BY VectorDistance(c.content_vector, @query_vector)"
-
-    results = container.query_items(
-        query=query,
-        parameters=parameters,
-        enable_cross_partition_query=True,
-    )
-    return list(results)
-
-
 def get_document_metadata(doc_id: str) -> dict:
     raise NotImplementedError
 
@@ -144,10 +100,6 @@ def get_authorized_user(phone: str) -> dict | None:
 
 
 def write_document(record: dict) -> None:
-    raise NotImplementedError
-
-
-def write_chunks(chunks: list[dict]) -> None:
     raise NotImplementedError
 
 

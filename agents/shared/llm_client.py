@@ -1,27 +1,86 @@
-"""Azure OpenAI wrapper — single client for chat, embeddings, and vision.
+"""One place that talks to the LLM. Every agent imports from here."""
+import json
+import logging
+import os
+from dataclasses import dataclass
 
-- chat(messages, ...) -> str: GPT-4o-mini (or GPT-4.1-mini) for agent reasoning,
-  relevance scoring, claim validation, and LLM quality filtering.
-- embed(texts, dimensions=512) -> list[list[float]]: text-embedding-3-small with
-  reduced dimension (512) — fits Cosmos DB flat index cap, ~3x storage savings.
-- caption_image(image_url_or_bytes) -> str: vision LLM call for diagram
-  verbalization (e.g. "Five-stage 6D pose estimation pipeline: ...").
-"""
+from dotenv import load_dotenv
+from openai import AzureOpenAI, OpenAI
+
+load_dotenv()
+log = logging.getLogger(__name__)
+
+@dataclass
+class ToolCall:
+    id:str
+    name:str
+    arguments:dict  # already parsed from JSON
+
+@dataclass
+class ChatResult:
+    content: str | None
+    tool_calls: list[ToolCall]
+    message: dict  # assistant message, ready to append to conversation
 
 
-def chat(messages: list[dict], **kwargs) -> str:
-    """Single chat completion. Returns assistant text."""
-    raise NotImplementedError
+_client = None
 
 
-def embed(texts: list[str], dimensions: int = 512) -> list[list[float]]:
-    """Embed a batch of texts at reduced dimension (default 512)."""
-    raise NotImplementedError
+def _get_client():
+    """Client build once LLM provider picks azure or NVIDIA backup"""
+    global _client
+    if _client is None:
+        if os.getenv("LLM_PROVIDER", "azure") == "nvidia":
+            _client = OpenAI(
+                base_url = os.environ["NVIDIA_BASE_URL"],
+                api_key = os.environ["NVIDIA_API_KEY"],
+            )
+        else:
+            _client = AzureOpenAI(
+                azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+                api_key=os.environ["AZURE_OPENAI_KEY"],
+                api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+            )
+    return _client
+
+def _model_name() -> str:
+    if os.getenv("LLM_PROVIDER", "azure") == "nvidia":
+        return os.environ["NVIDIA_MODEL"]
+    return os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT"]
+
+def chat_with_tools(messages: list[dict], tools: list[dict], **kwargs) -> ChatResult:
+    resp = _get_client().chat.completions.create(
+        model=_model_name(),
+        messages=messages,
+        tools=tools,
+        **kwargs,
+    )
+    msg = resp.choices[0].message
+
+    calls = []
+    for tc in msg.tool_calls or []:
+        try:
+            args = json.loads(tc.function.arguments or "{}")
+            if not isinstance(args, dict):
+                args = {}
+        except json.JSONDecodeError:
+            log.warning("bad tool arguments from model: %r", tc.function.arguments)
+            args = {}
+        calls.append(ToolCall(id=tc.id, name=tc.function.name, arguments=args))
+
+    message = {"role": "assistant", "content": msg.content}
+    if msg.tool_calls:
+        message["tool_calls"] = [
+            {
+                "id": tc.id,
+                "type": "function",
+                "function": {"name": tc.function.name, "arguments": tc.function.arguments or "{}"},
+            }
+            for tc in msg.tool_calls
+        ]
+    return ChatResult(content=msg.content, tool_calls=calls, message=message)
 
 
-def caption_image(image: bytes, context: str = "") -> str:
-    """Vision LLM: produce a citable text caption for an extracted diagram.
+def tool_result_message(tool_call_id: str, content: str) -> dict:
+    return {"role": "tool", "tool_call_id": tool_call_id, "content": content}
 
-    context: surrounding paragraph text from the paper, to ground the caption.
-    """
-    raise NotImplementedError

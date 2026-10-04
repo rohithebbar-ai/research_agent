@@ -1,4 +1,4 @@
-"""Tests for the Scout agent loop.
+"""Tests for the Paper Scout agent loop (agents.paper_scout).
 
 Cover:
 - Relevance decision (relevant / not / borderline -> citation check).

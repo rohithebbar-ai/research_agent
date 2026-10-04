@@ -26,7 +26,7 @@ def scout_on_demand(req: func.HttpRequest) -> func.HttpResponse:
     """HTTP trigger: /scout/on-demand — called by Summarizer's fetch_more tool.
 
     Body: {"concept": str, "reason": str}
-    Runs a concept-based Scout pass, returns count of newly indexed chunks.
+    Runs a concept-based Scout pass, returns count of newly indexed papers.
     """
     raise NotImplementedError
 
@@ -34,7 +34,7 @@ def scout_on_demand(req: func.HttpRequest) -> func.HttpResponse:
 def scout_daily(timer: func.TimerRequest) -> None:
     """Timer trigger: daily at a fixed UTC time.
 
-    Runs the category-based Scout agent loop (agents.scout) and logs a run
+    Runs the category-based Scout agent loop (agents.paper_scout) and logs a run
     summary (papers seen, papers indexed) to Application Insights.
     """
     raise NotImplementedError

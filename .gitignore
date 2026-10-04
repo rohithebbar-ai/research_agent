@@ -1,4 +1,13 @@
 ﻿
 .env
-
+__pycache__
+.venv
+host.json
+docs/
+.funcignore
+uv.lock
+.pytest_cache
 .env
+__pycache__
+_reference/
+scripts/*_reference.py

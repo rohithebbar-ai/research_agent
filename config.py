@@ -30,13 +30,16 @@ class Settings:
     azure_openai_endpoint: str
     azure_openai_key: str
     azure_openai_chat_deployment: str
-    azure_openai_embedding_deployment: str
     azure_openai_api_version: str
+    azure_openai_embedding_deployment: str | None = None
 
     # project wide constants 
     embedding_dimensions: int = 512
     chunk_size_tokens: int = 500
     chunk_overlap_tokens: int = 50
+
+    # Tavily web search — optional, used by tools/web_search.py
+    tavily_api_key: str | None = None
 
     # WhatsApp — optional for now, used later by channels/whatsapp.py
     whatsapp_verify_token: str | None = None
@@ -52,8 +55,9 @@ def load_settings() -> Settings:
         azure_openai_endpoint=_require("AZURE_OPENAI_ENDPOINT"),
         azure_openai_key=_require("AZURE_OPENAI_KEY"),
         azure_openai_chat_deployment=_require("AZURE_OPENAI_CHAT_DEPLOYMENT"),
-        azure_openai_embedding_deployment=_require("AZURE_OPENAI_EMBEDDING_DEPLOYMENT"),
+        azure_openai_embedding_deployment=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT") or None,
         azure_openai_api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-21"),
+        tavily_api_key=os.getenv("TAVILY_API_KEY") or None,
         whatsapp_verify_token=os.getenv("WHATSAPP_VERIFY_TOKEN"),
         whatsapp_app_secret=os.getenv("WHATSAPP_APP_SECRET"),
         whatsapp_access_token=os.getenv("WHATSAPP_ACCESS_TOKEN"),
